@@ -27,11 +27,10 @@ class FutureTradingActivity : AppCompatActivity() {
     private lateinit var tvLow: TextView
     private lateinit var lvCryptoPairs: ListView
 
-    // WebSocket configuration parameters securely optimized
     private val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(15, TimeUnit.SECONDS)
         .build()
 
     private var webSocket: WebSocket? = null
@@ -56,8 +55,7 @@ class FutureTradingActivity : AppCompatActivity() {
         lvCryptoPairs.setOnItemClickListener { _, _, position, _ ->
             selectedSymbol = cryptoList[position].symbol
             tvSymbol.text = selectedSymbol
-            tvPrice.text = "Connecting..."
-            tvPrice.setTextColor(Color.parseColor("#848E9C"))
+            tvPrice.text = "Switching..."
             startTargetedWebSocket(selectedSymbol)
         }
 
@@ -107,21 +105,20 @@ class FutureTradingActivity : AppCompatActivity() {
     }
 
     private fun startTargetedWebSocket(symbol: String) {
-        webSocket?.close(1000, "Switching Socket")
+        webSocket?.close(1000, "Switching Stream")
         
         val targetStream = symbol.lowercase()
-        // Standard high-reliability production endpoint for binance streams
         val wsUrl = "wss://fstream.binance.com/ws/$targetStream@ticker"
         
         val request = Request.Builder()
             .url(wsUrl)
-            .header("User-Agent", "Mozilla/5.0 (Android; Mobile)") // Identity mask for handshake approval
+            .header("User-Agent", "Mozilla/5.0 (Android; Mobile)")
             .build()
 
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice.text = "Live Syncing..."
+                    tvPrice.text = "Syncing Data..."
                 }
             }
 
@@ -129,7 +126,7 @@ class FutureTradingActivity : AppCompatActivity() {
                 try {
                     val jsonObject = JsonParser.parseString(text).asJsonObject
                     
-                    // Binance websocket format extraction mechanics
+                    // Safe Extraction: Crash aur freeze se bachane ke liye safe strings to double
                     val price = jsonObject.get("c").asString.toDouble()
                     val change = jsonObject.get("P").asString.toDouble()
                     val high = jsonObject.get("h").asString.toDouble()
@@ -154,16 +151,15 @@ class FutureTradingActivity : AppCompatActivity() {
                         }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        tvPrice.text = "Format Error"
+                    }
                 }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                t.printStackTrace()
-                // Automatic system recovery protocol on failure
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice.text = "Reconnecting..."
-                    tvPrice.setTextColor(Color.parseColor("#F6465D"))
+                    tvPrice.text = "Reconnecting Tunnel..."
                     delay(3000)
                     startTargetedWebSocket(selectedSymbol)
                 }
@@ -173,7 +169,7 @@ class FutureTradingActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        webSocket?.close(1000, "Activity Destroyed")
+        webSocket?.close(1000, "Destroyed")
     }
 
     inner class CryptoListAdapter(private val list: ArrayList<CryptoAsset>) : BaseAdapter() {
