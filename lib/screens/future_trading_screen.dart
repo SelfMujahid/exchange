@@ -102,7 +102,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // LEFT SECTION - DENSE TRADING PANEL CONTROL MATRIX
-                              Expanded(flex: 13, child: _buildLeftTradingControlPanel(realMarginRequired, enteredAmountValue)),
+                              Expanded(flex: 13, child: _buildLeftTradingControlPanel(realMarginRequired, enteredAmountValue, dynamicNotionalValue)),
                               const SizedBox(width: 10),
                               // RIGHT SECTION - SYSTEM DEPTH ORDER BOOK
                               Expanded(flex: 11, child: _buildRightOrderbookPanel()),
@@ -131,7 +131,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
       color: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Row(
-        mainAxisAlignment: Main====MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: ["Futures", "Spot", "Bot"].map((mode) {
@@ -211,7 +211,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
   // =========================================================
   // 3. LEFT PANEL: ADVANCED TRADING CORE EXECUTIVE PANEL
   // =========================================================
-  Widget _buildLeftTradingControlPanel(double marginCost, double tokenVolume) {
+  Widget _buildLeftTradingControlPanel(double marginCost, double enteredAmountValue, double dynamicNotionalValue) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -349,13 +349,15 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
         // TP/SL Dynamic Overlay Toggle Nodes
         Row(
           children: [
-            SizedBox(
-              height: 20,
-              width: 20,
-              child: Checkbox(
-                value: _tpSlChecked,
-                activeColor: const Color(0xFFF0B90B),
-                onChanged: (val) => setState(() => _tpSlChecked = val ?? false),
+            WidgetRef(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: Checkbox(
+                  value: _tpSlChecked,
+                  activeColor: const Color(0xFFF0B90B),
+                  onChanged: (val) => setState(() => _tpSlChecked = val ?? false),
+                ),
               ),
             ),
             const SizedBox(width: 6),
@@ -383,7 +385,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
             Text("1,250.00 USDT", style: TextStyle(fontSize: 9.5, color: Colors.black87, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
           ],
         ),
-        const Divider(color: Colors.black10, height: 12),
+        Divider(color: Colors.black.withOpacity(0.1), height: 12),
 
         // Order Final Executable Output Metrics Tracker Row
         Row(
@@ -472,7 +474,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
               Text("0.0100% / 03:55", style: TextStyle(fontSize: 8.5, color: Colors.black87, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
             ],
           ),
-          const Divider(color: Colors.black10, height: 6),
+          Divider(color: Colors.black.withOpacity(0.1), height: 6),
           
           // SELL / ASKS ORDER ENGINE TRACKS
           Column(
@@ -647,7 +649,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      "BTCUSDT ${_positionSideType} ${_leverageValue.toInt()}x",
+                      "BTCUSDT $_positionSideType ${_leverageValue.toInt()}x",
                       style: TextStyle(color: _positionSideType == "LONG" ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -683,7 +685,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
           ),
           const Padding(padding: EdgeInsets.symmetric(vertical: 4), child: Divider(color: Color(0xFFF4F5F8))),
           Row(
-            mainAxisAlignment: Main====MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildCardAttributeNode("Entry Price", "\$${_positionEntryPrice.toStringAsFixed(1)}"),
               _buildCardAttributeNode("Mark Price", "\$${_liveCryptoPrice.toStringAsFixed(1)}"),
@@ -705,4 +707,12 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
       ],
     );
   }
+}
+
+// Minimal placeholder inside project block mapping if needed
+class WidgetRef extends StatelessWidget {
+  final Widget child;
+  const WidgetRef({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => child;
 }
