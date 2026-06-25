@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Isse aap manually bhi jab chahein APK build kar sakte hain
+  workflow_dispatch:
 
 jobs:
   build:
@@ -24,6 +24,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
+      - name: Re-create Missing Android Native Files
+        run: flutter create . --platforms=android
 
       - name: Install Project Dependencies
         run: flutter pub get
