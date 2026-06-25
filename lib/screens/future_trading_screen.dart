@@ -145,7 +145,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 8),
                                   child: Text(
                                     _currentMarketPrice.toStringAsFixed(1),
-                                    style: TextStyle(color: _asks.isNotEmpty ? Colors.red : Colors.green, fontSize: 14, fontWeight: FontWeight.black, fontFamily: 'monospace'),
+                                    style: TextStyle(color: _asks.isNotEmpty ? Colors.red : Colors.green, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
                                   ),
                                 ),
                                 const Text("Bids (Buyers)", style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
