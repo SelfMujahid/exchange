@@ -253,7 +253,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> with SingleTi
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_currentMarketPrice.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.black, color: Colors.black87, fontFamily: 'monospace')),
+                Text(_currentMarketPrice.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black87, fontFamily: 'monospace')),
                 const Text("Spread 0.5", style: TextStyle(fontSize: 9, color: Colors.black38, fontWeight: FontWeight.bold)),
               ],
             ),
@@ -596,7 +596,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> with SingleTi
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: const Color(0xFFF1F2F6), borderRadius: BorderRadius.circular(4)),
-                  child: const Text("Flash Close", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black70)),
+                  child: Text("Flash Close", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black.withOpacity(0.7))),
                 ),
               )
             ],
@@ -614,7 +614,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> with SingleTi
                   const SizedBox(height: 2),
                   Text(
                     "${isGreen ? '+' : ''}${pnlPercent.toStringAsFixed(2)}% (${isGreen ? '+' : ''}\$${pnlUsdt.toStringAsFixed(2)})",
-                    style: TextStyle(color: isGreen ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontWeight: FontWeight.black, fontSize: 12, fontFamily: 'monospace'),
+                    style: TextStyle(color: isGreen ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontWeight: FontWeight.w900, fontSize: 12, fontFamily: 'monospace'),
                   ),
                 ],
               )
