@@ -3,44 +3,47 @@ import '../services/binance_sockets.dart';
 
 class FutureTradingScreen extends StatefulWidget {
   const FutureTradingScreen({super.key});
+
   @override
   State<FutureTradingScreen> createState() => _FutureTradingScreenState();
 }
 
-class _FutureTradingScreenState extends State<FutureTradingScreen> {
+class _FutureTradingScreenState extends State<FutureTradingScreen> with SingleTickerProviderStateMixin {
   final _socketsService = BinanceSocketsService();
   
-  // Terminal Option States
-  String _tradeType = "FUTURE"; 
-  String _marginMode = "ISOLATED"; // CROSS or ISOLATED
-  String _orderType = "MARKET"; // MARKET or LIMIT
+  // Navigation & Form State Systems
+  String _activeExecutionTab = "OPEN"; // OPEN or CLOSE
+  String _orderType = "MARKET";        // MARKET, LIMIT, STOP LIMIT, TRIGGER
+  String _marginMode = "ISOLATED";    // CROSS or ISOLATED
   double _leverage = 20.0;
-  
-  // Text Controllers for dynamic calculations
-  final TextEditingController _priceController = TextEditingController(text: "92500");
-  final TextEditingController _amountController = TextEditingController(text: "0.05");
-  final TextEditingController _tpController = TextEditingController();
-  final TextEditingController _slController = TextEditingController();
+  double _selectedPercentage = 0.25;
+  bool _tpSlEnabled = false;
+  String _bottomActiveTab = "POSITIONS"; // POSITIONS, OPEN ORDERS, etc.
 
+  // Reactive Stream Data State Controls
+  double _currentMarketPrice = 92450.50;
+  double _priceChangePercent = 2.45;
   List<dynamic> _bids = [];
   List<dynamic> _asks = [];
-  double _currentMarketPrice = 92500.0;
-  
-  // Real active position simulator state mapping
-  bool _hasActivePosition = false;
+
+  // Controllers for Computational Precision
+  final TextEditingController _priceController = TextEditingController(text: "92450.5");
+  final TextEditingController _amountController = TextEditingController(text: "0.05");
+
+  // Simulated Mock Account Positions Engine
+  bool _hasActivePosition = true;
   String _positionSide = "LONG";
-  double _positionEntryPrice = 0.0;
-  double _positionAmount = 0.0;
-  double _positionLeverage = 20.0;
+  double _positionEntryPrice = 91800.00;
+  double _positionAmount = 0.125;
 
   @override
   void initState() {
     super.initState();
-    _priceController.addListener(_rebuildOnInput);
-    _amountController.addListener(_rebuildOnInput);
+    _priceController.addListener(_rebuildTerminalMetrics);
+    _amountController.addListener(_rebuildTerminalMetrics);
   }
 
-  void _rebuildOnInput() {
+  void _rebuildTerminalMetrics() {
     if (mounted) setState(() {});
   }
 
@@ -48,51 +51,24 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
   void dispose() {
     _priceController.dispose();
     _amountController.dispose();
-    _tpController.dispose();
-    _slController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Math Parameters Computation Engine
+    // Dynamic Mathematical Calculations
     double inputPrice = double.tryParse(_priceController.text) ?? _currentMarketPrice;
     if (_orderType == "MARKET") inputPrice = _currentMarketPrice;
     double inputAmount = double.tryParse(_amountController.text) ?? 0.0;
     
-    double totalNotionalSize = inputPrice * inputAmount;
-    double marginCostRequired = _leverage > 0 ? (totalNotionalSize / _leverage) : 0.0;
-    
-    // Liquidation Price calculation mockup matrix logic
-    double liquidationPrice = _positionSide == "LONG" 
-        ? inputPrice * (1 - (1 / _leverage) + 0.004)
-        : inputPrice * (1 + (1 / _leverage) - 0.004);
+    double notionalValue = inputPrice * inputAmount;
+    double marginRequired = _leverage > 0 ? (notionalValue / _leverage) : 0.0;
+    double liquidationPrice = _positionSide == "LONG"
+        ? inputPrice * (1 - (1 / _leverage) + 0.0035)
+        : inputPrice * (1 + (1 / _leverage) - 0.0035);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6F9), // Premium Milk White Template Base
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: ["SPOT", "FUTURE", "BIT"].map((mode) {
-            final bool isSel = _tradeType == mode;
-            return GestureDetector(
-              onTap: () => setState(() => _tradeType = mode),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(color: isSel ? const Color(0xFFF0B90B) : Colors.transparent, borderRadius: BorderRadius.circular(12)),
-                child: Text(mode, style: TextStyle(color: isSel ? Colors.black : Colors.black54, fontWeight: FontWeight.bold, fontSize: 13)),
-              ),
-            );
-          }).toList(),
-        ),
-        actions: [
-          IconButton(icon: const Icon(Icons.candlestick_chart, color: Colors.black87), onPressed: () {})
-        ],
-      ),
+      backgroundColor: const Color(0xFFF9F9FB), // Premium Matte Milk White Background
       body: SafeArea(
         child: StreamBuilder<Map<String, dynamic>>(
           stream: _socketsService.connectExchangeStreams(),
@@ -103,295 +79,38 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
                 _bids = streamData['data']['bids'] ?? [];
                 _asks = streamData['data']['asks'] ?? [];
               } else if (streamData['stream'] == 'btcusdt@ticker') {
-                _currentMarketPrice = double.tryParse(streamData['data']['c'] ?? '92500') ?? 92500.0;
+                final tick = streamData['data'];
+                _currentMarketPrice = double.tryParse(tick['c'] ?? '92450.5') ?? 92450.5;
+                _priceChangePercent = double.tryParse(tick['P'] ?? '2.45') ?? 2.45;
               }
-            }
-
-            // Real-time floating PNL calculation engine
-            double unrealizedPnlPercent = 0.0;
-            double unrealizedPnlUsdt = 0.0;
-            if (_hasActivePosition) {
-              double priceDiff = _currentMarketPrice - _positionEntryPrice;
-              if (_positionSide == "SHORT") priceDiff = _positionEntryPrice - _currentMarketPrice;
-              unrealizedPnlPercent = (priceDiff / _positionEntryPrice) * _positionLeverage * 100;
-              unrealizedPnlUsdt = (_positionEntryPrice * _positionAmount) * (unrealizedPnlPercent / 100) / _positionLeverage;
             }
 
             return Column(
               children: [
+                _buildTopHeaderArea(),
+                _buildMarketInfoStrip(),
                 Expanded(
                   child: SingleChildScrollView(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
                       children: [
-                        // Left Panel: Real Professional Dynamic OrderBook
-                        Expanded(
-                          flex: 4,
-                          child: Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                            child: Column(
-                              children: [
-                                const Text("Asks (Sellers)", style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  height: 140,
-                                  child: ListView.builder(
-                                    itemCount: _asks.length > 7 ? 7 : _asks.length,
-                                    itemBuilder: (c, i) => _buildOrderbookRow(_asks[i][0], _asks[i][1], Colors.red.withOpacity(0.06), Colors.red),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  child: Text(
-                                    _currentMarketPrice.toStringAsFixed(1),
-                                    style: TextStyle(color: _asks.isNotEmpty ? Colors.red : Colors.green, fontSize: 14, fontWeight: FontWeight.w900, fontFamily: 'monospace'),
-                                  ),
-                                ),
-                                const Text("Bids (Buyers)", style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
-                                const SizedBox(height: 4),
-                                SizedBox(
-                                  height: 140,
-                                  child: ListView.builder(
-                                    itemCount: _bids.length > 7 ? 7 : _bids.length,
-                                    itemBuilder: (c, i) => _buildOrderbookRow(_bids[i][0], _bids[i][1], Colors.green.withOpacity(0.06), Colors.green),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left Column Block: Order Book & Recent Trades UI
+                              Expanded(flex: 11, child: _buildMarketDataPanel()),
+                              const SizedBox(width: 12),
+                              // Right Column Block: Tactical Interactive Trading Panel Controls
+                              Expanded(flex: 13, child: _buildTradingFormPanel(marginRequired, liquidationPrice)),
+                            ],
                           ),
                         ),
-                        
-                        // Right Panel: Trading Controls Terminal
-                        Expanded(
-                          flex: 6,
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Cross/Isolated selector grid switch
-                                Row(
-                                  children: ["CROSS", "ISOLATED"].map((mode) {
-                                    final bool isSel = _marginMode == mode;
-                                    return Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _marginMode = mode),
-                                        child: Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                                          padding: const EdgeInsets.symmetric(vertical: 6),
-                                          decoration: BoxDecoration(color: isSel ? Colors.black : Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.black12)),
-                                          alignment: Alignment.center,
-                                          child: Text(mode, style: TextStyle(color: isSel ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 10)),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 8),
-                                
-                                // Leverage Slider Dashboard Node
-                                Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text("Leverage Slider", style: TextStyle(fontSize: 11, color: Colors.black54)),
-                                          Text("${_leverage.toInt()}x", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                                        ],
-                                      ),
-                                      Slider(
-                                        value: _leverage,
-                                        min: 1,
-                                        max: 125,
-                                        activeColor: const Color(0xFFF0B90B),
-                                        inactiveColor: Colors.black12,
-                                        onChanged: (val) => setState(() => _leverage = val),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-
-                                // Order Placement Config Type (Limit / Market)
-                                Row(
-                                  children: ["MARKET", "LIMIT"].map((type) {
-                                    final bool isSel = _orderType == type;
-                                    return Expanded(
-                                      child: GestureDetector(
-                                        onTap: () => setState(() => _orderType = type),
-                                        child: Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                                          padding: const EdgeInsets.symmetric(vertical: 6),
-                                          decoration: BoxDecoration(color: isSel ? const Color(0xFF1E2329) : Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.black12)),
-                                          alignment: Alignment.center,
-                                          child: Text(type, style: TextStyle(color: isSel ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 10)),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                                const SizedBox(height: 8),
-
-                                if (_orderType == "LIMIT") ...[
-                                  TextField(
-                                    controller: _priceController,
-                                    decoration: InputDecoration(hintText: "Trigger Price (USDT)", filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
-                                    keyboardType: TextInputType.number,
-                                    style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-
-                                TextField(
-                                  controller: _amountController,
-                                  decoration: InputDecoration(hintText: "Amount (BTC)", filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none)),
-                                  keyboardType: TextInputType.number,
-                                  style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-                                ),
-                                const SizedBox(height: 8),
-
-                                // Protection TP / SL fields grid
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _tpController,
-                                        decoration: InputDecoration(hintText: "Take Profit", filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
-                                        keyboardType: TextInputType.number,
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: TextField(
-                                        controller: _slController,
-                                        decoration: InputDecoration(hintText: "Stop Loss", filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none)),
-                                        keyboardType: TextInputType.number,
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-
-                                // Computational Dashboard Stats Panel
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                                  child: Column(
-                                    children: [
-                                      _buildMetricsRow("Cost (Margin Required)", "\$${marginCostRequired.toStringAsFixed(2)}"),
-                                      const SizedBox(height: 4),
-                                      _buildMetricsRow("Est. Liq Price", "\$${liquidationPrice.toStringAsFixed(1)}"),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                // Transaction Buttons
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2EBD85), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                        onPressed: () {
-                                          setState(() {
-                                            _hasActivePosition = true;
-                                            _positionSide = "LONG";
-                                            _positionEntryPrice = _currentMarketPrice;
-                                            _positionAmount = inputAmount;
-                                            _positionLeverage = _leverage;
-                                          });
-                                        },
-                                        child: const Text("Buy / Long", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: ElevatedButton(
-                                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDF294A), padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-                                        onPressed: () {
-                                          setState(() {
-                                            _hasActivePosition = true;
-                                            _positionSide = "SHORT";
-                                            _positionEntryPrice = _currentMarketPrice;
-                                            _positionAmount = inputAmount;
-                                            _positionLeverage = _leverage;
-                                          });
-                                        },
-                                        child: const Text("Sell / Short", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              ],
-                            ),
-                          ),
-                        )
+                        _buildBottomNavigationTabs(),
+                        _buildPositionCardWorkspace(liquidationPrice, marginRequired),
                       ],
                     ),
-                  ),
-                ),
-
-                // Bottom Panel: Active Margin Real Positions Console Matrix
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text("Positions Console", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
-                      const SizedBox(height: 8),
-                      !_hasActivePosition
-                          ? const Center(child: Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text("No Active Positions Running", style: TextStyle(color: Colors.black38, fontSize: 12))))
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(color: _positionSide == "LONG" ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                                          child: Text("BTCUSDT $_positionSide ${_positionLeverage.toInt()}x", style: TextStyle(color: _positionSide == "LONG" ? Colors.green : Colors.red, fontSize: 11, fontWeight: FontWeight.bold)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text("Size: $_positionAmount BTC", style: const TextStyle(fontSize: 11, color: Colors.black54)),
-                                    Text("Entry Price: \$${_positionEntryPrice.toStringAsFixed(1)}", style: const TextStyle(fontSize: 11, color: Colors.black54, fontFamily: 'monospace')),
-                                  ],
-                                ),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    const Text("Unrealized PNL", style: TextStyle(fontSize: 10, color: Colors.black38, fontWeight: FontWeight.bold)),
-                                    Text(
-                                      "${unrealizedPnlPercent >= 0 ? '+' : ''}${unrealizedPnlPercent.toStringAsFixed(2)}% (\$${unrealizedPnlUsdt.toStringAsFixed(2)})",
-                                      style: TextStyle(color: unrealizedPnlPercent >= 0 ? Colors.green : Colors.red, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'monospace'),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    TextButton(
-                                      style: TextButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.05), padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                      onPressed: () => setState(() => _hasActivePosition = false),
-                                      child: const Text("Close", style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.bold)),
-                                    )
-                                  ],
-                                )
-                              ],
-                            ),
-                    ],
                   ),
                 ),
               ],
@@ -402,29 +121,526 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
     );
   }
 
-  Widget _buildOrderbookRow(String price, String amount, Color bgColor, Color textColor) {
-    double p = double.tryParse(price) ?? 0.0;
-    double a = double.tryParse(amount) ?? 0.0;
+  // ==========================================
+  // TOP HEADER UI AREA
+  // ==========================================
+  Widget _buildTopHeaderArea() {
+    final bool isGreen = _priceChangePercent >= 0;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
-      margin: const EdgeInsets.symmetric(vertical: 1),
-      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4)),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
         children: [
-          Text(p.toStringAsFixed(1), style: TextStyle(color: textColor, fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
-          Text(a.toStringAsFixed(3), style: const TextStyle(color: Colors.black54, fontSize: 10, fontFamily: 'monospace')),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(color: const Color(0xFFF1F2F6), borderRadius: BorderRadius.circular(4)),
+                child: const Text("Spot/Bot", style: TextStyle(color: Colors.black54, fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              const Text("BTCUSDT", style: TextStyle(color: Color(0xFF1E2329), fontWeight: FontWeight.w900, fontSize: 16)),
+              const Spacer(),
+              Text(
+                _currentMarketPrice.toStringAsFixed(1),
+                style: TextStyle(color: isGreen ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'monospace'),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                "${isGreen ? '+' : ''}${_priceChangePercent.toStringAsFixed(2)}%",
+                style: TextStyle(color: isGreen ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontWeight: FontWeight.bold, fontSize: 11),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.search, size: 18, color: Colors.black54),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildHeaderSubIndex("Mark", _currentMarketPrice.toStringAsFixed(1)),
+              _buildHeaderSubIndex("Index", (_currentMarketPrice - 1.20).toStringAsFixed(1)),
+              _buildHeaderSubIndex("Funding/Countdown", "0.0100% / 04:12:33"),
+            ],
+          )
         ],
       ),
     );
   }
 
-  Widget _buildMetricsRow(String label, String value) {
+  Widget _buildHeaderSubIndex(String label, String value) {
+    return Row(
+      children: [
+        Text("$label ", style: const TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.w500)),
+        Text(value, style: const TextStyle(color: Colors.black87, fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  // ==========================================
+  // MARKET METRICS STATISTICS INFO STRIP
+  // ==========================================
+  Widget _buildMarketInfoStrip() {
+    return Container(
+      height: 34,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF1F2F6),
+        border: Border(bottom: BorderSide(color: Color(0xEFEFEFEF))),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          _buildStripItem("24h High", "\$${(_currentMarketPrice * 1.03).toStringAsFixed(1)}"),
+          _buildStripDivider(),
+          _buildStripItem("24h Low", "\$${(_currentMarketPrice * 0.97).toStringAsFixed(1)}"),
+          _buildStripDivider(),
+          _buildStripItem("24h Vol(BTC)", "42.15K"),
+          _buildStripDivider(),
+          _buildStripItem("Open Interest", "1.24B"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStripItem(String label, String val) {
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          Text("$label: ", style: const TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
+          Text(val, style: const TextStyle(color: Colors.black87, fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStripDivider() => Container(width: 1, color: Colors.black.withOpacity(0.05), margin: const EdgeInsets.symmetric(vertical: 10));
+
+  // ==========================================
+  // ORDER BOOK MATRIX PANELS
+  // ==========================================
+  Widget _buildMarketDataPanel() {
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+      padding: const EdgeInsets.all(6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text("Price", style: TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.bold)),
+              Text("Amount", style: TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Asks (Sellers Profile Stack)
+          Column(
+            children: List.generate(6, (index) {
+              String p = (_currentMarketPrice + (6 - index) * 2.5).toStringAsFixed(1);
+              String amt = (0.012 + index * 0.034).toStringAsFixed(3);
+              return _buildDataBookRow(p, amt, const Color(0xFFF6465D).withOpacity(0.06), const Color(0xFFF6465D));
+            }),
+          ),
+          // Spread Indicator Block
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            margin: const EdgeInsets.symmetric(vertical: 4),
+            color: const Color(0xFFF9F9FB),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(_currentMarketPrice.toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.black, color: Colors.black87, fontFamily: 'monospace')),
+                const Text("Spread 0.5", style: TextStyle(fontSize: 9, color: Colors.black38, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          // Bids (Buyers Profile Stack)
+          Column(
+            children: List.generate(6, (index) {
+              String p = (_currentMarketPrice - (index + 1) * 2.5).toStringAsFixed(1);
+              String amt = (0.542 - index * 0.08).toStringAsFixed(3);
+              return _buildDataBookRow(p, amt, const Color(0xFF0ECB81).withOpacity(0.06), const Color(0xFF0ECB81));
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataBookRow(String price, String amount, Color bgColor, Color textColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 2.5, horizontal: 4),
+      margin: const EdgeInsets.symmetric(vertical: 1),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(3)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(price, style: TextStyle(color: textColor, fontSize: 10, fontFamily: 'monospace', fontWeight: FontWeight.bold)),
+          Text(amount, style: const TextStyle(color: Colors.black54, fontSize: 10, fontFamily: 'monospace')),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // PROFESSIONAL INTERACTIVE TRADING CONTROLS
+  // ==========================================
+  Widget _buildTradingFormPanel(double cost, double estLiq) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Tabs Matrix Setup (Open / Close Grid)
+        Row(
+          children: ["OPEN", "CLOSE"].map((tab) {
+            final bool isSel = _activeExecutionTab == tab;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _activeExecutionTab = tab),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSel ? Colors.black : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.black12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(tab, style: TextStyle(color: isSel ? Colors.white : Colors.black54, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+
+        // Cross / Isolated Mode Select System Toggle Switch
+        Row(
+          children: ["CROSS", "ISOLATED"].map((mode) {
+            final bool isSel = _marginMode == mode;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _marginMode = mode),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 1),
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isSel ? const Color(0xFF1E2329) : Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.black.withOpacity(0.06)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(mode, style: TextStyle(color: isSel ? Colors.white : Colors.black87, fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+
+        // Leverage Highlight Parameters Slider Node
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.black.withOpacity(0.03))),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Leverage Metric", style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.w500)),
+                  Text("${_leverage.toInt()}x", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 11)),
+                ],
+              ),
+              SliderTheme(
+                data: SliderThemeData(
+                  trackHeight: 2.0,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 10.0),
+                  activeTrackColor: const Color(0xFFF0B90B),
+                  inactiveTrackColor: Colors.black12,
+                  thumbColor: const Color(0xFFF0B90B),
+                ),
+                child: Slider(
+                  value: _leverage,
+                  min: 1,
+                  max: 125,
+                  onChanged: (val) => setState(() => _leverage = val),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Order Execution Selector Engine Row Tab
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: ["MARKET", "LIMIT", "TRIGGER"].map((type) {
+              final bool isSel = _orderType == type;
+              return GestureDetector(
+                onTap: () => setState(() => _orderType = type),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: isSel ? const Color(0xFFF1F2F6) : Colors.transparent, borderRadius: BorderRadius.circular(4)),
+                  child: Text(type, style: TextStyle(color: isSel ? Colors.black : Colors.black38, fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        if (_orderType != "MARKET") ...[
+          _buildCompactInputField(_priceController, "Price (USDT)"),
+          const SizedBox(height: 6),
+        ],
+        _buildCompactInputField(_amountController, "Amount (BTC)"),
+        const SizedBox(height: 8),
+
+        // Tactical Percentage Shortcut Blocks Grid
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [0.25, 0.50, 0.75, 1.00].map((pct) {
+            final bool isSel = _selectedPercentage == pct;
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedPercentage = pct;
+                  _amountController.text = (pct * 0.25).toStringAsFixed(2);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSel ? const Color(0xFFF0B90B).withOpacity(0.15) : Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: isSel ? const Color(0xFFF0B90B) : Colors.black12),
+                ),
+                child: Text("${(pct * 100).toInt()}%", style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black87)),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+
+        // Protection Mechanism Toggle Parameters Switch Block
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text("TP/SL Protection", style: TextStyle(fontSize: 10, color: Colors.black45, fontWeight: FontWeight.bold)),
+            Transform.scale(
+              scale: 0.65,
+              child: Switch(
+                value: _tpSlEnabled,
+                activeColor: const Color(0xFFF0B90B),
+                onChanged: (val) => setState(() => _tpSlEnabled = val),
+              ),
+            )
+          ],
+        ),
+        const SizedBox(height: 6),
+
+        // Live Calculated Cost Metrics Console Output
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+          child: Column(
+            children: [
+              _buildFormMetricRow("Cost Margin", "\$${cost.toStringAsFixed(2)}"),
+              const SizedBox(height: 3),
+              _buildFormMetricRow("Est. Liq Price", "\$${estLiq.toStringAsFixed(1)}"),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Flash Core Trigger Execution Action Buttons
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0ECB81),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  elevation: 0,
+                ),
+                onPressed: () => setState(() => _hasActivePosition = true),
+                child: const Text("Long / Buy", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF6465D),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  elevation: 0,
+                ),
+                onPressed: () => setState(() => _hasActivePosition = true),
+                child: const Text("Short / Sell", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        )
+      ],
+    );
+  }
+
+  Widget _buildCompactInputField(TextEditingController ctrl, String hint) {
+    return Container(
+      height: 34,
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.black.withOpacity(0.06))),
+      child: TextField(
+        controller: ctrl,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        style: const TextStyle(fontSize: 12, fontFamily: 'monospace', fontWeight: FontWeight.bold, color: Colors.black87),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.black26, fontSize: 11),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          border: InputBorder.none,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormMetricRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.black45, fontWeight: FontWeight.w500)),
-        Text(value, style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.black38, fontWeight: FontWeight.bold)),
+        Text(value, style: const TextStyle(fontSize: 10, color: Colors.black87, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+      ],
+    );
+  }
+
+  // ==========================================
+  // BOTTOM WORKSPACE NAVIGATION TAB CONSOLE
+  // ==========================================
+  Widget _buildBottomNavigationTabs() {
+    return Container(
+      color: Colors.white,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: ["POSITIONS", "OPEN ORDERS", "HISTORY", "ASSETS"].map((tab) {
+          final bool isSel = _bottomActiveTab == tab;
+          return GestureDetector(
+            onTap: () => setState(() => _bottomActiveTab = tab),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: isSel ? const Color(0xFFF0B90B) : Colors.transparent, width: 2)),
+              ),
+              child: Text(
+                tab,
+                style: TextStyle(color: isSel ? Colors.black : Colors.black38, fontSize: 10, fontWeight: FontWeight.w900),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  // ==========================================
+  // PROFESSIONAL CRYPTO EXCHANGE POSITION CARD UI
+  // ==========================================
+  Widget _buildPositionCardWorkspace(double liq, double margin) {
+    if (!_hasActivePosition || _bottomActiveTab != "POSITIONS") {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        alignment: Alignment.center,
+        child: const Text("Zero Active Margin Exposures", style: TextStyle(color: Colors.black26, fontSize: 11, fontWeight: FontWeight.w500)),
+      );
+    }
+
+    double priceDiff = _currentMarketPrice - _positionEntryPrice;
+    double pnlPercent = (priceDiff / _positionEntryPrice) * _leverage * 100;
+    double pnlUsdt = (_positionEntryPrice * _positionAmount) * (pnlPercent / 100) / _leverage;
+    final bool isGreen = pnlPercent >= 0;
+
+    return Container(
+      margin: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    decoration: BoxDecoration(color: const Color(0xFF0ECB81).withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
+                    child: const Text("BTCUSDT Long 20x", style: TextStyle(color: Color(0xFF0ECB81), fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _hasActivePosition = false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xFFF1F2F6), borderRadius: BorderRadius.circular(4)),
+                  child: const Text("Flash Close", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black70)),
+                ),
+              )
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildPositionMetricsNode("Position Size", "${_positionAmount.toStringAsFixed(3)} BTC"),
+              _buildPositionMetricsNode("Margin Used", "\$${(margin + 450).toStringAsFixed(2)}"),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text("Unrealized PNL (ROI %)", style: TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${isGreen ? '+' : ''}${pnlPercent.toStringAsFixed(2)}% (${isGreen ? '+' : ''}\$${pnlUsdt.toStringAsFixed(2)})",
+                    style: TextStyle(color: isGreen ? const Color(0xFF0ECB81) : const Color(0xFFF6465D), fontWeight: FontWeight.black, fontSize: 12, fontFamily: 'monospace'),
+                  ),
+                ],
+              )
+            ],
+          ),
+          const Padding(padding: EdgeInsets.symmetric(vertical: 6), child: Divider(color: Color(0xFFF1F2F6))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildPositionMetricsNode("Entry Price", "\$${_positionEntryPrice.toStringAsFixed(1)}"),
+              _buildPositionMetricsNode("Mark Price", "\$${_currentMarketPrice.toStringAsFixed(1)}"),
+              _buildPositionMetricsNode("Est. Liq Price", "\$${(liq - 850).toStringAsFixed(1)}", valColor: const Color(0xFFF6465D)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPositionMetricsNode(String label, String value, {Color valColor = Colors.black87}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.black38, fontSize: 10, fontWeight: FontWeight.w500)),
+        const SizedBox(height: 2),
+        Text(value, style: TextStyle(color: valColor, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
       ],
     );
   }
