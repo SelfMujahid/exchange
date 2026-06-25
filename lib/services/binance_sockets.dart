@@ -2,11 +2,13 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
 
 class BinanceSocketsService {
-  // Multiplex WebSocket for Tickers & Raw Depth (Orderbook)
-  Stream<Map<String, dynamic>> connectToExchange() {
+  // All market tickers fetch block
+  Stream<List<dynamic>> connectAllMarkets() {
     final channel = WebSocketChannel.connect(
-      Uri.parse('wss://stream.binance.com:9443/stream?streams=btcusdt@ticker/ethusdt@ticker/solusdt@ticker/bnbusdt@ticker/btcusdt@depth5'),
+      Uri.parse('wss://stream.binance.com:9443/ws/!ticker@arr'),
     );
-    return channel.stream.map((snapshot) => jsonDecode(snapshot) as Map<String, dynamic>);
+    return channel.stream.map((snapshot) {
+      return jsonDecode(snapshot) as List<dynamic>;
+    });
   }
 }
