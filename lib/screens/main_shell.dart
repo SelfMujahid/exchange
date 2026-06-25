@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'markets_screen.dart';
-import 'trade_screen.dart';
+import 'dashboard.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -13,9 +12,9 @@ class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   
   final List<Widget> _screens = [
-    const MarketsScreen(),
-    const TradeScreen(),
-    const Scaffold(body: Center(child: Text('Wallets Core (Secure Node)', style: TextStyle(color: Colors.white70)))),
+    const DashboardScreen(),
+    const Scaffold(body: Center(child: Text('Trading Desk Console Connected', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)))),
+    const Scaffold(body: Center(child: Text('Market Analytics Node Online', style: TextStyle(color: Color(0xFFF0B90B),延时: 1.2)))),
   ];
 
   @override
@@ -25,13 +24,14 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         backgroundColor: const Color(0xFF12161A),
-        selectedItemColor: const Color(0xFFF0B90B), // Binance Gold
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: const Color(0xFFF0B90B),
+        unselectedItemColor: Colors.white30,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
         onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.trending_up), label: 'Markets'),
-          BottomNavigationBarItem(icon: Icon(Icons.swap_horizontal_circle), label: 'Trade'),
-          BottomNavigationBarItem(icon: Icon(Icons.account_balance_wallet), label: 'Wallets'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.insert_chart_outlined), label: 'Trading'),
+          BottomNavigationBarItem(icon: Icon(Icons.analytics_outlined), label: 'Analytics'),
         ],
       ),
     );
