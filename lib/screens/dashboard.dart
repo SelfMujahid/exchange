@@ -13,7 +13,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final currencyFormatter = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
   
   String _searchQuery = "";
-  String _activeTab = "ALL";
   double _demoBalance = 10000.00;
   final Map<String, Map<String, dynamic>> _tickerMap = {};
 
@@ -62,7 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F6F9), // Premium Milk White Background
+      backgroundColor: const Color(0xFFF5F6F9),
       body: StreamBuilder<Map<String, dynamic>>(
         stream: _socketsService.connectExchangeStreams(),
         builder: (context, snapshot) {
@@ -90,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Image.asset('assets/logo.webp', width: 36, height: 36, errorBuilder: (c, e, s) => const CircleAvatar(backgroundColor: Color(0xFFF0B90B), radius: 18, child: Icon(Icons.bolt, color: Colors.black))),
                           const SizedBox(width: 10),
-                          const Text("EXCHANGE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.black, fontSize: 18)),
+                          const Text("EXCHANGE", style: TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 18)),
                         ],
                       ),
                       IconButton(
@@ -102,7 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // Portfolio Balance Card
+              // Balance Card
               SliverToBoxAdapter(
                 child: Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -125,13 +124,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ],
                       ),
-                      Text(currencyFormatter.format(_demoBalance), style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.black, fontFamily: 'monospace')),
+                      Text(currencyFormatter.format(_demoBalance), style: const TextStyle(color: Colors.black, fontSize: 28, fontWeight: FontWeight.w900, fontFamily: 'monospace')),
                     ],
                   ),
                 ),
               ),
 
-              // Search Input
+              // Search
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -150,7 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
 
-              // Lists grid
+              // Asset List
               keys.isEmpty
                   ? const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator(color: Color(0xFFF0B90B))))
                   : SliverList(
