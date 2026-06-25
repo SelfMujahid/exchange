@@ -20,7 +20,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: AppBar(
         title: const Text(
           '⚡ ULTRA-FAST EXCHANGE', 
-          style: TextStyle(fontWeight: FontWeight.black, letterSpacing: 1.2, fontSize: 18, color: Colors.white)
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 18, color: Colors.white)
         ),
         backgroundColor: const Color(0xFF12161A),
         centerTitle: true,
@@ -55,7 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     border: Border.all(color: Colors.white10, width: 1),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.between,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,7 +97,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () {},
-                        child: const Text('INSTANT BUY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.black, fontSize: 16)),
+                        child: const Text('INSTANT BUY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -109,7 +109,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () {},
-                        child: const Text('INSTANT SELL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.black, fontSize: 16)),
+                        child: const Text('INSTANT SELL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
                       ),
                     ),
                   ],
