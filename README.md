@@ -1,1 +1,0 @@
-# crypto-demo-app
