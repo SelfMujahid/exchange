@@ -13,7 +13,7 @@ class FutureTradingScreen extends StatefulWidget {
 
 class _FutureTradingScreenState extends State<FutureTradingScreen> {
   WebSocketChannel? _wsChannel;
-  StreamController<Map<String, dynamic>> _marketStreamController = StreamController<Map<String, dynamic>>.broadcast();
+  final StreamController<Map<String, dynamic>> _marketStreamController = StreamController<Map<String, dynamic>>.broadcast();
   
   // Real Exchange Data Catalogs (400+ Crypto Pairs Ledger Index)
   List<Map<String, dynamic>> _cryptoMarketAssets = [];
@@ -288,7 +288,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
   }
 
   // =========================================================
-  // 2. TICKER RIBBON SYSTEM (RESOLVES OVERFLOWS)
+  // 2. TICKER RIBBON SYSTEM
   // =========================================================
   Widget _buildDynamicSecondTickerSection(double livePrice) {
     double changePercent = double.tryParse(_selectedAsset['change'] ?? '0.0') ?? 0.0;
@@ -301,7 +301,7 @@ class _FutureTradingScreenState extends State<FutureTradingScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: _showCryptoPairAssetSelectorSheet(),
+            onTap: () => _showCryptoPairAssetSelectorSheet(), // FIXED: Handled void callback properly here
             child: Row(
               children: [
                 Text(_selectedAsset['symbol'], style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 14)),
