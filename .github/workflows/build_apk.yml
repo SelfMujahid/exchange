@@ -28,6 +28,10 @@ jobs:
       - name: Re-create Missing Android Native Files
         run: flutter create . --platforms=android
 
+      - name: Inject Internet Permission into Android Manifest
+        run: |
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.INTERNET" \/>' android/app/src/main/AndroidManifest.xml
+
       - name: Install Project Dependencies
         run: flutter pub get
 
