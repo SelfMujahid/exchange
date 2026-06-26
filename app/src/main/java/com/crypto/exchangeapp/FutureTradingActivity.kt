@@ -17,23 +17,22 @@ import java.util.concurrent.TimeUnit
 
 class FutureTradingActivity : AppCompatActivity() {
 
-    // Hum variables ko nullable bana rahe hain taaki crash ka koi chance na rahe
     private var tvSymbol: TextView? = null
     private var tvPrice: TextView? = null
     private var tvChange: TextView? = null
 
     private var webSocket: WebSocket? = null
-    private var selectedSymbol = "BTCUSDT"
+    private val selectedSymbol = "BTCUSDT"
     private lateinit var client: OkHttpClient
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // XML LAYOUT BYPASS: Hum XML file load hi nahi kar rahe taaki missing ID ka crash khatam ho jaye
+        // Creating dynamic runtime interface to avoid XML layout errors
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(Color.parseColor("#161A20")) // Binance Dark Theme
+            setBackgroundColor(Color.parseColor("#161A20"))
             padding = 50
         }
 
@@ -45,7 +44,7 @@ class FutureTradingActivity : AppCompatActivity() {
         }
 
         tvPrice = TextView(this).apply {
-            text = "Initializing Network..."
+            text = "Initializing Network Engine..."
             textSize = 22f
             setTextColor(Color.parseColor("#848E9C"))
             gravity = Gravity.CENTER
@@ -63,7 +62,6 @@ class FutureTradingActivity : AppCompatActivity() {
         rootLayout.addView(tvPrice)
         rootLayout.addView(tvChange)
 
-        // Screen par direct layout set kar rahe hain
         setContentView(rootLayout)
 
         setupAuthenticNetworkEngine()
@@ -88,7 +86,7 @@ class FutureTradingActivity : AppCompatActivity() {
                     printDiagnostic("Step 4: Network Connected!")
                 }
                 override fun connectFailed(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?, ioe: IOException) {
-                    printDiagnostic("Handshake Stop: ${ioe.localizedMessage}")
+                    printDiagnostic("Handshake Stop: \${ioe.localizedMessage}")
                 }
             })
             .build()
@@ -103,7 +101,7 @@ class FutureTradingActivity : AppCompatActivity() {
 
     private fun startTargetedWebSocket(symbol: String) {
         webSocket?.close(1000, "Reset")
-        val wsUrl = "wss://fstream.binance.com/ws/${symbol.lowercase()}@ticker"
+        val wsUrl = "wss://fstream.binance.com/ws/\${symbol.lowercase()}@ticker"
         
         val request = Request.Builder()
             .url(wsUrl)
