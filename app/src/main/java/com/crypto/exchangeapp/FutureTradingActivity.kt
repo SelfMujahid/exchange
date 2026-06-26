@@ -126,124 +126,114 @@ class FutureTradingActivity : AppCompatActivity() {
 
     private fun startTargetedWebSocket(symbol: String) {
 
-        webSocket?.close(1000, "Reset")
+    webSocket?.close(1000, "Reset")
 
-        // YAHAN SABSE BARA BUG THA
-        val wsUrl =
-            "wss://fstream.binance.com/ws/${symbol.lowercase()}@ticker"
+    // Futures ki bajay normal spot stream test karo
+    val wsUrl =
+        "wss://stream.binance.com:9443/ws/${symbol.lowercase()}@ticker"
 
-        val request = Request.Builder()
-            .url(wsUrl)
-            .header("User-Agent", "Mozilla/5.0")
-            .build()
+    val request = Request.Builder()
+        .url(wsUrl)
+        .build()
 
-        webSocket = client.newWebSocket(
-            request,
-            object : WebSocketListener() {
+    webSocket = client.newWebSocket(
+        request,
+        object : WebSocketListener() {
 
-                override fun onOpen(
-                    webSocket: WebSocket,
-                    response: Response
-                ) {
+            override fun onOpen(
+                webSocket: WebSocket,
+                response: Response
+            ) {
 
-                    lifecycleScope.launch(Dispatchers.Main) {
+                lifecycleScope.launch(Dispatchers.Main) {
 
-                        tvPrice?.text = "Tunnel Connected!"
-                        tvPrice?.setTextColor(
-                            Color.parseColor("#0ECB81")
-                        )
+                    tvPrice?.text = "Tunnel Connected!"
+                    tvPrice?.setTextColor(
+                        Color.parseColor("#0ECB81")
+                    )
 
-                        tvChange?.text = "Streaming Live..."
-                    }
-                }
-
-                override fun onMessage(
-                    webSocket: WebSocket,
-                    text: String
-                ) {
-
-                    try {
-
-                        val jsonObject =
-                            JsonParser.parseString(text).asJsonObject
-
-                        val price =
-                            jsonObject.get("c").asString.toDouble()
-
-                        val change =
-                            jsonObject.get("P").asString.toDouble()
-
-                        lifecycleScope.launch(Dispatchers.Main) {
-
-                            tvPrice?.text =
-                                String.format("$%.2f", price)
-
-                            tvChange?.text =
-                                String.format(
-                                    "24h Change: %.2f%%",
-                                    change
-                                )
-
-                            if (change >= 0) {
-
-                                tvPrice?.setTextColor(
-                                    Color.parseColor("#0ECB81")
-                                )
-
-                            } else {
-
-                                tvPrice?.setTextColor(
-                                    Color.parseColor("#F6465D")
-                                )
-                            }
-                        }
-
-                    } catch (e: Exception) {
-
-                        lifecycleScope.launch(Dispatchers.Main) {
-
-                            tvPrice?.text = "JSON Error"
-
-                            tvChange?.text =
-                                e.localizedMessage ?: "Unknown Error"
-
-                            tvChange?.setTextColor(Color.YELLOW)
-                        }
-                    }
-                }
-
-                override fun onFailure(
-                    webSocket: WebSocket,
-                    t: Throwable,
-                    response: Response?
-                ) {
-
-                    lifecycleScope.launch(Dispatchers.Main) {
-
-                        tvPrice?.text = "Tunnel Failure"
-
-                        tvPrice?.setTextColor(
-                            Color.parseColor("#F6465D")
-                        )
-
-                        tvChange?.text =
-                            "Reason: ${t.localizedMessage}"
-
-                        tvChange?.setTextColor(Color.YELLOW)
-
-                        delay(5000)
-
-                        startTargetedWebSocket(selectedSymbol)
-                    }
+                    tvChange?.text = "Waiting Data..."
                 }
             }
-        )
-    }
 
-    override fun onDestroy() {
+            override fun onMessage(
+                webSocket: WebSocket,
+                text: String
+            ) {
 
-        super.onDestroy()
+                // DEBUG
+                println("RAW DATA = $text")
 
-        webSocket?.close(1000, "Exit")
-    }
+                try {
+
+                    val json =
+                        JsonParser.parseString(text).asJsonObject
+
+                    // Current price
+                    val price =
+                        json.get("c").asString.toDouble()
+
+                    // 24h change
+                    val change =
+                        json.get("P").asString.toDouble()
+
+                    lifecycleScope.launch(Dispatchers.Main) {
+
+                        tvPrice?.text =
+                            "$" + String.format("%.2f", price)
+
+                        tvChange?.text =
+                            "24h: " +
+                            String.format("%.2f%%", change)
+
+                        if (change >= 0) {
+
+                            tvPrice?.setTextColor(
+                                Color.parseColor("#0ECB81")
+                            )
+
+                        } else {
+
+                            tvPrice?.setTextColor(
+                                Color.parseColor("#F6465D")
+                            )
+                        }
+                    }
+
+                } catch (e: Exception) {
+
+                    lifecycleScope.launch(Dispatchers.Main) {
+
+                        tvPrice?.text = "Parsing Error"
+
+                        tvChange?.text =
+                            e.message ?: "Unknown"
+
+                        tvChange?.setTextColor(Color.YELLOW)
+                    }
+
+                    e.printStackTrace()
+                }
+            }
+
+            override fun onFailure(
+                webSocket: WebSocket,
+                t: Throwable,
+                response: Response?
+            ) {
+
+                lifecycleScope.launch(Dispatchers.Main) {
+
+                    tvPrice?.text = "Connection Failed"
+
+                    tvChange?.text =
+                        t.localizedMessage ?: "Unknown Error"
+
+                    tvChange?.setTextColor(Color.RED)
+                }
+
+                t.printStackTrace()
+            }
+        }
+    )
 }
