@@ -1,9 +1,9 @@
 package com.crypto.exchangeapp
 
-import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
-import android.os.PowerManager
+import android.view.Gravity
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -17,44 +17,54 @@ import java.util.concurrent.TimeUnit
 
 class FutureTradingActivity : AppCompatActivity() {
 
-    private lateinit var tvSymbol: TextView
-    private lateinit var tvPrice: TextView
-    private lateinit var tvChange: TextView
-    private lateinit var tvHigh: TextView
-    private lateinit var tvLow: TextView
+    // Hum variables ko nullable bana rahe hain taaki crash ka koi chance na rahe
+    private var tvSymbol: TextView? = null
+    private var tvPrice: TextView? = null
+    private var tvChange: TextView? = null
 
     private var webSocket: WebSocket? = null
     private var selectedSymbol = "BTCUSDT"
     private lateinit var client: OkHttpClient
-    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Safety Layer: Agar layout inflation mein bhi koi masla ho toh handles exception
-        try {
-            setContentView(R.layout.activity_future_trading)
-            
-            tvSymbol = findViewById(R.id.tvSymbol)
-            tvPrice = findViewById(R.id.tvPrice)
-            tvChange = findViewById(R.id.tvChange)
-            tvHigh = findViewById(R.id.tvHigh)
-            tvLow = findViewById(R.id.tvLow)
 
-            tvSymbol.text = selectedSymbol
-        } catch (e: Exception) {
-            e.printStackTrace()
+        // XML LAYOUT BYPASS: Hum XML file load hi nahi kar rahe taaki missing ID ka crash khatam ho jaye
+        val rootLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundColor(Color.parseColor("#161A20")) // Binance Dark Theme
+            padding = 50
         }
 
-        // Safe WakeLock Configuration (Crash Proof Barrier)
-        try {
-            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ExchangeApp::NetworkWakeLock")
-            wakeLock?.acquire(5 * 60 * 1000L /*5 Minutes Safety Window*/)
-        } catch (e: Exception) {
-            // Android OS agar block karega toh app close nahi hogi, default mode par chalegi
-            e.printStackTrace()
+        tvSymbol = TextView(this).apply {
+            text = selectedSymbol
+            textSize = 28f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
         }
+
+        tvPrice = TextView(this).apply {
+            text = "Initializing Network..."
+            textSize = 22f
+            setTextColor(Color.parseColor("#848E9C"))
+            gravity = Gravity.CENTER
+            setPadding(0, 30, 0, 30)
+        }
+
+        tvChange = TextView(this).apply {
+            text = "24h: --"
+            textSize = 18f
+            setTextColor(Color.GRAY)
+            gravity = Gravity.CENTER
+        }
+
+        rootLayout.addView(tvSymbol)
+        rootLayout.addView(tvPrice)
+        rootLayout.addView(tvChange)
+
+        // Screen par direct layout set kar rahe hain
+        setContentView(rootLayout)
 
         setupAuthenticNetworkEngine()
         startTargetedWebSocket(selectedSymbol)
@@ -64,24 +74,19 @@ class FutureTradingActivity : AppCompatActivity() {
         client = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
             .eventListener(object : EventListener() {
                 override fun dnsStart(call: Call, domainName: String) {
                     printDiagnostic("Step 1: Checking Domain...")
                 }
-
                 override fun connectStart(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy) {
                     printDiagnostic("Step 2: Starting TCP Pipe...")
                 }
-
                 override fun secureConnectStart(call: Call) {
                     printDiagnostic("Step 3: Checking SSL Certificate...")
                 }
-
                 override fun connectEnd(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?) {
                     printDiagnostic("Step 4: Network Connected!")
                 }
-
                 override fun connectFailed(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?, ioe: IOException) {
                     printDiagnostic("Handshake Stop: ${ioe.localizedMessage}")
                 }
@@ -91,10 +96,8 @@ class FutureTradingActivity : AppCompatActivity() {
 
     private fun printDiagnostic(statusMessage: String) {
         lifecycleScope.launch(Dispatchers.Main) {
-            if (::tvPrice.isInitialized) {
-                tvPrice.text = statusMessage
-                tvPrice.setTextColor(Color.parseColor("#848E9C"))
-            }
+            tvPrice?.text = statusMessage
+            tvPrice?.setTextColor(Color.parseColor("#848E9C"))
         }
     }
 
@@ -110,10 +113,8 @@ class FutureTradingActivity : AppCompatActivity() {
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    if (::tvPrice.isInitialized) {
-                        tvPrice.text = "Receiving Live Stream..."
-                        tvPrice.setTextColor(Color.parseColor("#0ECB81"))
-                    }
+                    tvPrice?.text = "Receiving Live Stream..."
+                    tvPrice?.setTextColor(Color.parseColor("#0ECB81"))
                 }
             }
 
@@ -122,21 +123,15 @@ class FutureTradingActivity : AppCompatActivity() {
                     val jsonObject = JsonParser.parseString(text).asJsonObject
                     val price = jsonObject.get("c").asString.toDouble()
                     val change = jsonObject.get("P").asString.toDouble()
-                    val high = jsonObject.get("h").asString.toDouble()
-                    val low = jsonObject.get("l").asString.toDouble()
 
                     lifecycleScope.launch(Dispatchers.Main) {
-                        if (::tvPrice.isInitialized) {
-                            tvPrice.text = String.format("$%.2f", price)
-                            tvChange.text = String.format("24h: %.2f%%", change)
-                            tvHigh.text = String.format("High: %.1f", high)
-                            tvLow.text = String.format("Low: %.1f", low)
+                        tvPrice?.text = String.format("$%.2f", price)
+                        tvChange?.text = String.format("24h: %.2f%%", change)
 
-                            if (change >= 0) {
-                                tvPrice.setTextColor(Color.parseColor("#0ECB81"))
-                            } else {
-                                tvPrice.setTextColor(Color.parseColor("#F6465D"))
-                            }
+                        if (change >= 0) {
+                            tvPrice?.setTextColor(Color.parseColor("#0ECB81"))
+                        } else {
+                            tvPrice?.setTextColor(Color.parseColor("#F6465D"))
                         }
                     }
                 } catch (e: Exception) {
@@ -146,10 +141,8 @@ class FutureTradingActivity : AppCompatActivity() {
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    if (::tvPrice.isInitialized) {
-                        tvPrice.text = "Reconnecting Tunnel..."
-                        tvPrice.setTextColor(Color.parseColor("#F6465D"))
-                    }
+                    tvPrice?.text = "Reconnecting..."
+                    tvPrice?.setTextColor(Color.parseColor("#F6465D"))
                     delay(5000)
                     startTargetedWebSocket(selectedSymbol)
                 }
@@ -159,13 +152,6 @@ class FutureTradingActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        try {
-            if (wakeLock?.isHeld == true) {
-                wakeLock?.release()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
         webSocket?.close(1000, "Exit")
     }
 }
