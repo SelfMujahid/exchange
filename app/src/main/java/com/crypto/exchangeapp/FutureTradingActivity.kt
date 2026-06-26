@@ -28,12 +28,10 @@ class FutureTradingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Corrected standard Android layout programmatic parameters
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#161A20"))
-            // Fix: Standard method to set padding programmatically
             setPadding(50, 50, 50, 50)
         }
 
@@ -45,16 +43,16 @@ class FutureTradingActivity : AppCompatActivity() {
         }
 
         tvPrice = TextView(this).apply {
-            text = "Initializing Network Engine..."
-            textSize = 22f
+            text = "Starting Network..."
+            textSize = 20f
             setTextColor(Color.parseColor("#848E9C"))
             gravity = Gravity.CENTER
             setPadding(0, 30, 0, 30)
         }
 
         tvChange = TextView(this).apply {
-            text = "24h: --"
-            textSize = 18f
+            text = "Waiting for Handshake..."
+            textSize = 16f
             setTextColor(Color.GRAY)
             gravity = Gravity.CENTER
         }
@@ -75,28 +73,29 @@ class FutureTradingActivity : AppCompatActivity() {
             .readTimeout(15, TimeUnit.SECONDS)
             .eventListener(object : EventListener() {
                 override fun dnsStart(call: Call, domainName: String) {
-                    printDiagnostic("Step 1: Checking Domain...")
+                    printDiagnostic("Step 1: Resolving DNS...", "Connecting...")
                 }
                 override fun connectStart(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy) {
-                    printDiagnostic("Step 2: Starting TCP Pipe...")
+                    printDiagnostic("Step 2: TCP 3-Way Handshake Shuru...", "TCP Active")
                 }
                 override fun secureConnectStart(call: Call) {
-                    printDiagnostic("Step 3: Checking SSL Certificate...")
+                    printDiagnostic("Step 3: SSL Verification Shuru...", "SSL Active")
                 }
                 override fun connectEnd(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?) {
-                    printDiagnostic("Step 4: Network Connected!")
+                    printDiagnostic("Step 4: Network Connected Fully!", "Handshake Clear")
                 }
                 override fun connectFailed(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?, ioe: IOException) {
-                    printDiagnostic("Handshake Stop: \${ioe.localizedMessage}")
+                    printDiagnostic("Handshake Failed", "Err: \${ioe.localizedMessage}")
                 }
             })
             .build()
     }
 
-    private fun printDiagnostic(statusMessage: String) {
+    private fun printDiagnostic(priceText: String, changeText: String) {
         lifecycleScope.launch(Dispatchers.Main) {
-            tvPrice?.text = statusMessage
-            tvPrice?.setTextColor(Color.parseColor("#848E9C"))
+            tvPrice?.text = priceText
+            tvChange?.text = changeText
+            tvChange?.setTextColor(Color.parseColor("#848E9C"))
         }
     }
 
@@ -112,8 +111,9 @@ class FutureTradingActivity : AppCompatActivity() {
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice?.text = "Receiving Live Stream..."
+                    tvPrice?.text = "Tunnel Connected!"
                     tvPrice?.setTextColor(Color.parseColor("#0ECB81"))
+                    tvChange?.text = "Streaming Live..."
                 }
             }
 
@@ -140,8 +140,12 @@ class FutureTradingActivity : AppCompatActivity() {
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice?.text = "Reconnecting..."
+                    // Yahan hum screen par exact network failure error print kar rahe hain
+                    tvPrice?.text = "Tunnel Failure"
                     tvPrice?.setTextColor(Color.parseColor("#F6465D"))
+                    tvChange?.text = "Reason: \${t.localizedMessage}"
+                    tvChange?.setTextColor(Color.colorToTEXT ya Color.YELLOW)
+                    
                     delay(5000)
                     startTargetedWebSocket(selectedSymbol)
                 }
