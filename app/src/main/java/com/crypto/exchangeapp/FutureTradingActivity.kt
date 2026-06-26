@@ -30,21 +30,31 @@ class FutureTradingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_future_trading)
+        
+        // Safety Layer: Agar layout inflation mein bhi koi masla ho toh handles exception
+        try {
+            setContentView(R.layout.activity_future_trading)
+            
+            tvSymbol = findViewById(R.id.tvSymbol)
+            tvPrice = findViewById(R.id.tvPrice)
+            tvChange = findViewById(R.id.tvChange)
+            tvHigh = findViewById(R.id.tvHigh)
+            tvLow = findViewById(R.id.tvLow)
 
-        // UI Initializations
-        tvSymbol = findViewById(R.id.tvSymbol)
-        tvPrice = findViewById(R.id.tvPrice)
-        tvChange = findViewById(R.id.tvChange)
-        tvHigh = findViewById(R.id.tvHigh)
-        tvLow = findViewById(R.id.tvLow)
+            tvSymbol.text = selectedSymbol
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
-        tvSymbol.text = selectedSymbol
-
-        // WhatsApp-like WakeLock activation to prevent CPU sleeping
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ExchangeApp::NetworkWakeLock")
-        wakeLock?.acquire(10 * 60 * 1000L /*10 minutes safety timeout*/)
+        // Safe WakeLock Configuration (Crash Proof Barrier)
+        try {
+            val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ExchangeApp::NetworkWakeLock")
+            wakeLock?.acquire(5 * 60 * 1000L /*5 Minutes Safety Window*/)
+        } catch (e: Exception) {
+            // Android OS agar block karega toh app close nahi hogi, default mode par chalegi
+            e.printStackTrace()
+        }
 
         setupAuthenticNetworkEngine()
         startTargetedWebSocket(selectedSymbol)
@@ -52,37 +62,28 @@ class FutureTradingActivity : AppCompatActivity() {
 
     private fun setupAuthenticNetworkEngine() {
         client = OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            // Real-Time Handshake Diagnostics Monitor
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
             .eventListener(object : EventListener() {
                 override fun dnsStart(call: Call, domainName: String) {
-                    printDiagnostic("Step 1: Resolving Binance Domain Name...")
-                }
-
-                override fun dnsEnd(call: Call, domainName: String, inetAddressList: List<InetAddress>) {
-                    printDiagnostic("Step 1 Complete: Domain resolved to IP.")
+                    printDiagnostic("Step 1: Checking Domain...")
                 }
 
                 override fun connectStart(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy) {
-                    printDiagnostic("Step 2: Activating TCP 3-Way Handshake Pipe...")
+                    printDiagnostic("Step 2: Starting TCP Pipe...")
                 }
 
                 override fun secureConnectStart(call: Call) {
-                    printDiagnostic("Step 3: Initiating Authentic SSL TLS Verification...")
-                }
-
-                override fun secureConnectEnd(call: Call, handshake: Handshake?) {
-                    printDiagnostic("Step 3 Complete: SSL Certificate Authenticated Safely.")
+                    printDiagnostic("Step 3: Checking SSL Certificate...")
                 }
 
                 override fun connectEnd(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?) {
-                    printDiagnostic("Step 4: All Handshakes Complete! Opening Tunnel Stream...")
+                    printDiagnostic("Step 4: Network Connected!")
                 }
 
                 override fun connectFailed(call: Call, inetSocketAddress: java.net.InetSocketAddress, proxy: Proxy, protocol: Protocol?, ioe: IOException) {
-                    printDiagnostic("Handshake Interrupted: ${ioe.localizedMessage}")
+                    printDiagnostic("Handshake Stop: ${ioe.localizedMessage}")
                 }
             })
             .build()
@@ -90,13 +91,15 @@ class FutureTradingActivity : AppCompatActivity() {
 
     private fun printDiagnostic(statusMessage: String) {
         lifecycleScope.launch(Dispatchers.Main) {
-            tvPrice.text = statusMessage
-            tvPrice.setTextColor(Color.parseColor("#848E9C")) // Classic Grey Informative Text
+            if (::tvPrice.isInitialized) {
+                tvPrice.text = statusMessage
+                tvPrice.setTextColor(Color.parseColor("#848E9C"))
+            }
         }
     }
 
     private fun startTargetedWebSocket(symbol: String) {
-        webSocket?.close(1000, "Switch Stream")
+        webSocket?.close(1000, "Reset")
         val wsUrl = "wss://fstream.binance.com/ws/${symbol.lowercase()}@ticker"
         
         val request = Request.Builder()
@@ -107,8 +110,10 @@ class FutureTradingActivity : AppCompatActivity() {
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice.text = "Tunnel Fully Active! Receiving Packets..."
-                    tvPrice.setTextColor(Color.parseColor("#0ECB81"))
+                    if (::tvPrice.isInitialized) {
+                        tvPrice.text = "Receiving Live Stream..."
+                        tvPrice.setTextColor(Color.parseColor("#0ECB81"))
+                    }
                 }
             }
 
@@ -121,15 +126,17 @@ class FutureTradingActivity : AppCompatActivity() {
                     val low = jsonObject.get("l").asString.toDouble()
 
                     lifecycleScope.launch(Dispatchers.Main) {
-                        tvPrice.text = String.format("$%.2f", price)
-                        tvChange.text = String.format("24h: %.2f%%", change)
-                        tvHigh.text = String.format("High: %.1f", high)
-                        tvLow.text = String.format("Low: %.1f", low)
+                        if (::tvPrice.isInitialized) {
+                            tvPrice.text = String.format("$%.2f", price)
+                            tvChange.text = String.format("24h: %.2f%%", change)
+                            tvHigh.text = String.format("High: %.1f", high)
+                            tvLow.text = String.format("Low: %.1f", low)
 
-                        if (change >= 0) {
-                            tvPrice.setTextColor(Color.parseColor("#0ECB81")) // Neon Green
-                        } else {
-                            tvPrice.setTextColor(Color.parseColor("#F6465D")) // Crimson Red
+                            if (change >= 0) {
+                                tvPrice.setTextColor(Color.parseColor("#0ECB81"))
+                            } else {
+                                tvPrice.setTextColor(Color.parseColor("#F6465D"))
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -139,8 +146,10 @@ class FutureTradingActivity : AppCompatActivity() {
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 lifecycleScope.launch(Dispatchers.Main) {
-                    tvPrice.text = "Tunnel Closed: ${t.localizedMessage}"
-                    tvPrice.setTextColor(Color.parseColor("#F6465D"))
+                    if (::tvPrice.isInitialized) {
+                        tvPrice.text = "Reconnecting Tunnel..."
+                        tvPrice.setTextColor(Color.parseColor("#F6465D"))
+                    }
                     delay(5000)
                     startTargetedWebSocket(selectedSymbol)
                 }
@@ -150,9 +159,13 @@ class FutureTradingActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        if (wakeLock?.isHeld == true) {
-            wakeLock?.release() // Release wake lock on close
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        webSocket?.close(1000, "Activity Closed")
+        webSocket?.close(1000, "Exit")
     }
 }
