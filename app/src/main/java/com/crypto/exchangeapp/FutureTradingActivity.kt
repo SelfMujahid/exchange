@@ -28,12 +28,13 @@ class FutureTradingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Creating dynamic runtime interface to avoid XML layout errors
+        // Corrected standard Android layout programmatic parameters
         val rootLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#161A20"))
-            padding = 50
+            // Fix: Standard method to set padding programmatically
+            setPadding(50, 50, 50, 50)
         }
 
         tvSymbol = TextView(this).apply {
